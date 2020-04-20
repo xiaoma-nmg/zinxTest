@@ -61,13 +61,13 @@ func (s *Server) Start() {
 					buf := make([]byte, 512)
 					cnt, err := conn.Read(buf)
 					if err == io.EOF {
-						continue
+						break
 					}
 					if err != nil {
 						fmt.Println("recv buf err ", err)
-						continue
+						break
 					}
-					fmt.Printf("recive client message [%s]\n", buf)
+					fmt.Printf("recive [%s] client message [%s]\n", conn.RemoteAddr().String(), buf)
 
 					if _, err = conn.Write(buf[:cnt]); err != nil {
 						fmt.Println("echo buf error ", err)
