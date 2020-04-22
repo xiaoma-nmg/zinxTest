@@ -1,8 +1,8 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
-	"io"
 	"net"
 
 	"zinx/ziface"
@@ -30,6 +30,17 @@ func NewServer(name string) ziface.IServer {
 	}
 }
 
+func callback(conn *net.TCPConn, data []byte, cnt int) error {
+	fmt.Printf("recv data [%s], count %d\n", data, cnt)
+	// echo
+	_, err := conn.Write(data[:cnt])
+	if err != nil {
+		fmt.Println("wirte back buf err ", err)
+		return errors.New("CallBack To Client error")
+	}
+	return nil
+}
+
 // 启动服务器
 func (s *Server) Start() {
 	fmt.Printf("[Start] Server Listenner at IP:%s, Port:%d, is starting\n", s.IP, s.Port)
@@ -46,6 +57,7 @@ func (s *Server) Start() {
 			fmt.Println("listen", s.IPVersion, " err ", err)
 			return
 		}
+		var cid uint32 = 0
 		fmt.Printf("start zinx server %s success, Listinning...\n", s.Name)
 		// 阻塞的等待客户端的连接， 处理客户端的读写
 		for {
@@ -55,26 +67,9 @@ func (s *Server) Start() {
 				continue
 			}
 
-			// 已经与客户端建立连接，做一个基本的echo业务
-			go func() {
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf)
-					if err == io.EOF {
-						break
-					}
-					if err != nil {
-						fmt.Println("recv buf err ", err)
-						break
-					}
-					fmt.Printf("recive [%s] client message [%s]\n", conn.RemoteAddr().String(), buf)
-
-					if _, err = conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("echo buf error ", err)
-						continue
-					}
-				}
-			}()
+			dealConn := NewConnection(conn, cid, callback)
+			go dealConn.Start()
+			cid++
 
 		}
 	}()
