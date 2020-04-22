@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 
+	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -42,7 +43,7 @@ func (c *Connection) StartReader() {
 
 	for {
 		//读取客户端的数据到buf, 目前最大支持 512 KB
-		buf := make([]byte, 512)
+		buf := make([]byte, utils.GlobalObject.MaxPackageSize)
 		cnt, err := c.Conn.Read(buf)
 		if err == io.EOF {
 			break
