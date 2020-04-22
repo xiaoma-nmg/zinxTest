@@ -55,5 +55,5 @@ func init() {
 	}
 
 	// 读取用户配置
-	GlobalObject.Reload()
+	//GlobalObject.Reload()
 }

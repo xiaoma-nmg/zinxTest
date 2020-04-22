@@ -10,17 +10,11 @@ import (
 
 //IServer 的接口实现， 定义一个Server的服务器模块
 type Server struct {
-	//服务器的名称
-	Name string
-	//服务器绑定的ip版本
-	IPVersion string
-	//服务器监听IP地址
-	IP string
-	//服务器监听的端口
-	Port int
-
-	//当前的server添加一个router, 是server注册的连接对应的业务处理
-	Router ziface.IRouter
+	Name      string         //服务器的名称
+	IPVersion string         //服务器绑定的ip版本
+	IP        string         //服务器监听IP地址
+	Port      int            //服务器监听的端口
+	Router    ziface.IRouter //当前的server添加一个router, 是server注册的连接对应的业务处理
 }
 
 // 初始化server模块的方法

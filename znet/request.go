@@ -3,10 +3,8 @@ package znet
 import "zinx/ziface"
 
 type Request struct {
-	// 已经和客户端建立好的连接
-	conn ziface.IConnection
-	// 客户端请求的数据
-	data []byte
+	conn ziface.IConnection // 已经和客户端建立好的连接
+	data []byte             // 客户端请求的数据
 }
 
 //得到当前连接

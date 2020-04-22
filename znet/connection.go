@@ -11,17 +11,11 @@ import (
 
 //连接模块
 type Connection struct {
-	// 当前连接的socket TCP套接字
-	Conn *net.TCPConn
-	// 连接的ID
-	ConnID uint32
-	//当前连接的状态
-	isClosed bool
-	// 当前连接所绑定的处理业务方法API
-	ExitChan chan bool
-
-	// 该连接处理的方法Router
-	Router ziface.IRouter
+	Conn     *net.TCPConn   // 当前连接的socket TCP套接字
+	ConnID   uint32         // 连接的ID
+	isClosed bool           //当前连接的状态
+	ExitChan chan bool      // 当前连接所绑定的处理业务方法API
+	Router   ziface.IRouter // 该连接处理的方法Router
 }
 
 //初始化连接模块的方法
