@@ -54,7 +54,7 @@ func (c *Connection) StartReader() {
 		}
 
 		//得到当前conn数据的Request请求数据
-		req := Requst{
+		req := Request{
 			conn: c,
 			data: buf,
 		}
