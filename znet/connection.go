@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,7 +14,7 @@ import (
 type Connection struct {
 	Conn     *net.TCPConn   // 当前连接的socket TCP套接字
 	ConnID   uint32         // 连接的ID
-	isClosed bool           //当前连接的状态
+	isClosed bool           // 当前连接的状态
 	ExitChan chan bool      // 当前连接所绑定的处理业务方法API
 	Router   ziface.IRouter // 该连接处理的方法Router
 }
@@ -36,22 +37,37 @@ func (c *Connection) StartReader() {
 	defer c.Stop()
 
 	for {
-		//读取客户端的数据到buf, 目前最大支持 512 KB
-		buf := make([]byte, utils.GlobalObject.MaxPackageSize)
-		cnt, err := c.Conn.Read(buf)
-		if err == io.EOF {
+		// 创建一个拆包解包对象
+		dp := NewDataPack()
+		// 读取客户端的MsgHead
+		headData := make([]byte, dp.GetHeadLen())
+		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
+			fmt.Println("read message head error: ", err)
 			break
 		}
 
+		// 拆包，得到MsgID, MsgDataLen
+		msg, err := dp.UnPack(headData)
 		if err != nil {
-			fmt.Printf("recv buf err %s \n", err.Error())
-			continue
+			fmt.Println("Unpack error: ", err)
+			break
 		}
+
+		// 根据 MsgDataLen 读取MsgBody
+		var data []byte
+		if msg.GetMsgLength() > 0 {
+			data = make([]byte, msg.GetMsgLength())
+			if _, err := io.ReadFull(c.GetTCPConnection(), data); err != nil {
+				fmt.Println("read msg data error: ", err)
+				break
+			}
+		}
+		msg.SetData(data)
 
 		//得到当前conn数据的Request请求数据
 		req := Request{
 			conn: c,
-			data: buf,
+			msg:  msg,
 		}
 		fmt.Printf("recv data [%s]\n", buf[:cnt])
 		// 从路由中，找到注册绑定的Conn对应的router调用
@@ -105,6 +121,23 @@ func (c *Connection) RemoteAddr() net.Addr {
 }
 
 //发送数据 给远程的客户端
-func (c *Connection) Send([]byte) error {
+func (c *Connection) SendMsg(msgID uint32, data []byte) error {
+	if c.isClosed {
+		return errors.New("connection was closed, when send msg")
+	}
+	// 将data 封包成 message 格式
+	dp := NewDataPack()
+	binaryMsg, err := dp.Pack(NewMessage(msgID, data))
+	if err != nil {
+		fmt.Println("Pack error msg id = ", msgID)
+		return errors.New("package error msg")
+	}
+
+	// 将数据发送给客户端
+	if _, err := c.Conn.Write(binaryMsg); err != nil {
+		fmt.Println("write msg id ", msgID, "error: ", err)
+		return errors.New("conn write error")
+	}
+
 	return nil
 }
