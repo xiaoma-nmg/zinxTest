@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 
-	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -69,7 +68,6 @@ func (c *Connection) StartReader() {
 			conn: c,
 			msg:  msg,
 		}
-		fmt.Printf("recv data [%s]\n", buf[:cnt])
 		// 从路由中，找到注册绑定的Conn对应的router调用
 		go func(req ziface.IRequest) {
 			c.Router.PreHandle(req)

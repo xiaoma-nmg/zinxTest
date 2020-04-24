@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 
 	"zinx/ziface"
 )
@@ -23,9 +24,25 @@ type GlobalObj struct {
 	MaxPackageSize uint32 //  数据包的最大值
 }
 
+const CONFIGFILE = "conf/zinx.json"
+
+func ConfigFileExist(file string) bool {
+	_, err := os.Stat(file)
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
+}
+
 // 从 zinx.json 加载用户的配置
 func (g *GlobalObj) Reload() {
-	data, err := ioutil.ReadFile("conf/zinx.json")
+	if !ConfigFileExist(CONFIGFILE) {
+		return
+	}
+	data, err := ioutil.ReadFile(CONFIGFILE)
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +66,7 @@ func init() {
 		Host:           "0.0.0.0",
 		TcpPort:        9999,
 		Name:           "ZinxServerApp",
-		Version:        "V0.4",
+		Version:        "V0.5",
 		MaxConn:        1024,
 		MaxPackageSize: 4096,
 	}
