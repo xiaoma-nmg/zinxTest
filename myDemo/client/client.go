@@ -20,7 +20,7 @@ func main() {
 	for {
 		//  把消息打包成指定的TLV格式，发送
 		dp := znet.NewDataPack()
-		binaryMsg, err := dp.Pack(znet.NewMessage(0, []byte("zinxV0.5 client Test Message")))
+		binaryMsg, err := dp.Pack(znet.NewMessage(2, []byte("zinxV0.5 client Test Message")))
 		if err != nil {
 			fmt.Println("pack error: ", err)
 			continue
