@@ -14,7 +14,8 @@ type Connection struct {
 	Conn      *net.TCPConn      // 当前连接的socket TCP套接字
 	ConnID    uint32            // 连接的ID
 	isClosed  bool              // 当前连接的状态
-	ExitChan  chan bool         // 当前连接所绑定的处理业务方法API
+	exitChan  chan bool         // 由Reader告知Writer连接退出
+	msgChan   chan []byte       // 无缓冲的channel, 用于读写协程之间通信
 	MsgHandle ziface.IMsgHandle // 消息的管理msgID, 和对应的处理业务API
 }
 
@@ -24,15 +25,16 @@ func NewConnection(conn *net.TCPConn, connID uint32, msgHandle ziface.IMsgHandle
 		Conn:      conn,
 		ConnID:    connID,
 		isClosed:  false,
-		ExitChan:  make(chan bool, 1),
+		exitChan:  make(chan bool),
+		msgChan:   make(chan []byte),
 		MsgHandle: msgHandle,
 	}
 }
 
 // 连接的读业务方法
 func (c *Connection) StartReader() {
-	fmt.Println("Reader Goroutine is running ...")
-	defer fmt.Println("connID = ", c.ConnID, "Reader is exit, remote addr is ", c.RemoteAddr().String())
+	fmt.Println("[Reader Goroutine is running...]")
+	defer fmt.Println("connID = ", c.ConnID, "[Reader is exit, remote addr is ]", c.RemoteAddr().String())
 	defer c.Stop()
 
 	for {
@@ -77,14 +79,33 @@ func (c *Connection) StartReader() {
 
 }
 
+// 专门用于给客户端发送消息
+func (c *Connection) StartWriter() {
+	fmt.Println("[Writer Goroutine is running...]")
+	defer fmt.Println(c.RemoteAddr().String(), "[conn Writer exit!]")
+
+	// 阻塞等待 Reader 通过channel把数据丢过来，然后发送给客户端
+	for {
+		select {
+		case data := <-c.msgChan:
+			if _, err := c.Conn.Write(data); err != nil {
+				fmt.Println("Send data error: ", err)
+				return
+			}
+		case <-c.exitChan:
+			return
+		}
+	}
+}
+
 //启动连接 让当前的连接准备开始工作
 func (c *Connection) Start() {
 	fmt.Println("Connection start()... ConnID= ", c.ConnID)
 	//启动从当前连接的读数据的业务
 	go c.StartReader()
 
-	//TODO 启动从当前连接写数据的业务
-
+	// 启动从当前连接写数据的业务
+	go c.StartWriter()
 }
 
 //停止连接 结束当前连接的工作
@@ -98,8 +119,13 @@ func (c *Connection) Stop() {
 
 	//关闭socket连接
 	_ = c.Conn.Close()
+
+	// 告知Writer退出
+	c.exitChan <- true
+
 	//关闭channel 回收资源
-	close(c.ExitChan)
+	close(c.exitChan)
+	close(c.msgChan)
 }
 
 //获取当前连接绑定的socket conn
@@ -130,11 +156,7 @@ func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 		return errors.New("package error msg")
 	}
 
-	// 将数据发送给客户端
-	if _, err := c.Conn.Write(binaryMsg); err != nil {
-		fmt.Println("write msg id ", msgID, "error: ", err)
-		return errors.New("conn write error")
-	}
-
+	// 将数据发送给 Writer
+	c.msgChan <- binaryMsg
 	return nil
 }
