@@ -1,6 +1,7 @@
 {
-  "Name": "zinx V0.6",
+  "Name": "zinx V0.8",
   "Host": "127.0.0.1",
   "TcpPort": 9999,
-  "MaxConn": 3
+  "MaxConn": 3,
+  "WorkerPoolSize": 10
 }

@@ -19,9 +19,11 @@ type GlobalObj struct {
 	Name      string         //  当前服务器的名称
 
 	// Zinx
-	Version        string // 当前Zinx 的版本号
-	MaxConn        int    // 允许的最大连接数
-	MaxPackageSize uint32 //  数据包的最大值
+	Version              string // 当前Zinx 的版本号
+	MaxConn              int    // 允许的最大连接数
+	MaxPackageSize       uint32 //  数据包的最大值
+	WorkerPoolSize       uint32 // 服务器工作 worker 池的Goruntine 数量
+	MaxWorkerQueueLength uint32 // zinx 框架最大允许开启多少个 worker 池
 }
 
 const CONFIGFILE = "conf/zinx.json"
@@ -62,13 +64,15 @@ func init() {
 
 	// 配置文件没有加载，有一组默认的初始值
 	GlobalObject = &GlobalObj{
-		TcpServer:      nil,
-		Host:           "0.0.0.0",
-		TcpPort:        9999,
-		Name:           "ZinxServerApp",
-		Version:        "V0.7",
-		MaxConn:        1024,
-		MaxPackageSize: 4096,
+		TcpServer:            nil,
+		Host:                 "0.0.0.0",
+		TcpPort:              9999,
+		Name:                 "ZinxServerApp",
+		Version:              "V0.7",
+		MaxConn:              1024,
+		MaxPackageSize:       4096,
+		WorkerPoolSize:       10,
+		MaxWorkerQueueLength: 1024,
 	}
 
 	// 读取用户配置

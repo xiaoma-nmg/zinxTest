@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 
+	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -71,10 +72,12 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 
-		// 根据绑定好的msgId 找到对应的处理api业务执行
-		go func(req ziface.IRequest) {
-			c.MsgHandle.DoMsgHandle(req)
-		}(&req)
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			// 已经开启了工作池机制， 把 req 请求交给 worker pool
+			c.MsgHandle.SendMsgToTaskQueue(&req)
+		} else {
+			go c.MsgHandle.DoMsgHandle(&req)
+		}
 	}
 
 }
