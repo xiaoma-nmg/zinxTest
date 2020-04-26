@@ -10,11 +10,12 @@ import (
 
 //IServer 的接口实现， 定义一个Server的服务器模块
 type Server struct {
-	Name      string            //服务器的名称
-	IPVersion string            //服务器绑定的ip版本
-	IP        string            //服务器监听IP地址
-	Port      int               //服务器监听的端口
-	MsgHandle ziface.IMsgHandle //绑定msgID 和对应的处理业务
+	Name      string              //服务器的名称
+	IPVersion string              //服务器绑定的ip版本
+	IP        string              //服务器监听IP地址
+	Port      int                 //服务器监听的端口
+	MsgHandle ziface.IMsgHandle   //绑定msgID 和对应的处理业务
+	ConnMgr   ziface.IConnManager //服务器的连接管理器
 }
 
 // 初始化server模块的方法
@@ -25,6 +26,7 @@ func NewServer() ziface.IServer {
 		IP:        utils.GlobalObject.Host,
 		Port:      utils.GlobalObject.TcpPort,
 		MsgHandle: NewMsgHandler(),
+		ConnMgr:   NewConnManager(),
 	}
 }
 
@@ -61,7 +63,14 @@ func (s *Server) Start() {
 				continue
 			}
 
-			dealConn := NewConnection(conn, cid, s.MsgHandle)
+			// 判断连接个数是否超过最大值
+			if s.ConnMgr.Count() >= utils.GlobalObject.MaxConn {
+				fmt.Println("该服务器当前连接数已达到最大值")
+				conn.Close()
+				continue
+			}
+
+			dealConn := NewConnection(conn, cid, s.MsgHandle, s)
 			go dealConn.Start()
 			cid++
 		}
@@ -71,6 +80,8 @@ func (s *Server) Start() {
 // 停止服务器
 func (s *Server) Stop() {
 	//TODO
+	fmt.Println("[STOP] zinx server ", s.Name, " stop ")
+	s.ConnMgr.ClearConn()
 }
 
 func (s *Server) Server() {
@@ -84,4 +95,8 @@ func (s *Server) Server() {
 // 添加路由
 func (s *Server) AddRouter(msgID uint32, router ziface.IRouter) {
 	s.MsgHandle.AddRouter(msgID, router)
+}
+
+func (s *Server) GetConnManager() ziface.IConnManager {
+	return s.ConnMgr
 }

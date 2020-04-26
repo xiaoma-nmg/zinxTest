@@ -18,18 +18,22 @@ type Connection struct {
 	exitChan  chan bool         // 由Reader告知Writer连接退出
 	msgChan   chan []byte       // 无缓冲的channel, 用于读写协程之间通信
 	MsgHandle ziface.IMsgHandle // 消息的管理msgID, 和对应的处理业务API
+	TcpServer ziface.IServer    // 连接属于哪个Server
 }
 
 //初始化连接模块的方法
-func NewConnection(conn *net.TCPConn, connID uint32, msgHandle ziface.IMsgHandle) *Connection {
-	return &Connection{
+func NewConnection(conn *net.TCPConn, connID uint32, msgHandle ziface.IMsgHandle, server ziface.IServer) *Connection {
+	c := &Connection{
 		Conn:      conn,
 		ConnID:    connID,
 		isClosed:  false,
 		exitChan:  make(chan bool),
 		msgChan:   make(chan []byte),
 		MsgHandle: msgHandle,
+		TcpServer: server,
 	}
+	c.TcpServer.GetConnManager().Add(c)
+	return c
 }
 
 // 连接的读业务方法
@@ -125,7 +129,8 @@ func (c *Connection) Stop() {
 
 	// 告知Writer退出
 	c.exitChan <- true
-
+	// 将当前连接从连接管理器删除
+	c.TcpServer.GetConnManager().Remove(c)
 	//关闭channel 回收资源
 	close(c.exitChan)
 	close(c.msgChan)
