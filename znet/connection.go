@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 
 	"zinx/utils"
 	"zinx/ziface"
@@ -12,13 +13,15 @@ import (
 
 //连接模块
 type Connection struct {
-	Conn      *net.TCPConn      // 当前连接的socket TCP套接字
-	ConnID    uint32            // 连接的ID
-	isClosed  bool              // 当前连接的状态
-	exitChan  chan bool         // 由Reader告知Writer连接退出
-	msgChan   chan []byte       // 无缓冲的channel, 用于读写协程之间通信
-	MsgHandle ziface.IMsgHandle // 消息的管理msgID, 和对应的处理业务API
-	TcpServer ziface.IServer    // 连接属于哪个Server
+	Conn         *net.TCPConn           // 当前连接的socket TCP套接字
+	ConnID       uint32                 // 连接的ID
+	isClosed     bool                   // 当前连接的状态
+	exitChan     chan bool              // 由Reader告知Writer连接退出
+	msgChan      chan []byte            // 无缓冲的channel, 用于读写协程之间通信
+	MsgHandle    ziface.IMsgHandle      // 消息的管理msgID, 和对应的处理业务API
+	TcpServer    ziface.IServer         // 连接属于哪个Server
+	property     map[string]interface{} // 连接属性集合
+	propertyLock sync.RWMutex           //保护连接属性的锁
 }
 
 //初始化连接模块的方法
@@ -31,6 +34,7 @@ func NewConnection(conn *net.TCPConn, connID uint32, msgHandle ziface.IMsgHandle
 		msgChan:   make(chan []byte),
 		MsgHandle: msgHandle,
 		TcpServer: server,
+		property:  make(map[string]interface{}),
 	}
 	c.TcpServer.GetConnManager().Add(c)
 	return c
@@ -173,4 +177,27 @@ func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 	// 将数据发送给 Writer
 	c.msgChan <- binaryMsg
 	return nil
+}
+
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	c.property[key] = value
+}
+
+//获取连接属性
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+	if value, ok := c.property[key]; ok {
+		return value, nil
+	}
+	return nil, errors.New("no property found")
+}
+
+//移除连接属性
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	delete(c.property, key)
 }
